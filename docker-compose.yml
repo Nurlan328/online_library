@@ -1,0 +1,40 @@
+version: '3'
+
+services:
+  bookshop:
+   image: bookshop
+   ports:
+     - 2289
+   environment:
+     - SERVICE_PORTS=8080
+   deploy:
+     replicas: 4
+     update_config:
+       parallelism: 2
+       delay: 10s
+     restart_policy:
+       condition: on-failure
+       max_attempts: 3
+       window: 120s
+   networks:
+     - app
+
+  proxy:
+    image: dockercloud/haproxy
+    depends_on:
+      - bookshop
+    environment:
+      - BALANCE=leastconn
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "2289:80"
+    networks:
+      - app
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+
+networks:
+  app:
+    driver: overlay
